@@ -1,9 +1,15 @@
 import passport from "passport";
 import local from "passport-local";
 import jwt from "passport-jwt";
-import { createHash, isValidPassword } from "../utils/hashCreator.js";
-import UserModel from "../models/UserModel.js";
-import CartsModel from "../models/CartsModel.js";
+import env from "./env.js";
+import User from "../DAOs/mongo/classes/userClass.js";
+import {
+  passportLogin,
+  passportRegister,
+  passportCurrent,
+} from "../controllers/passportControllers.js";
+
+const userService = new User();
 const JWTStrategy = jwt.Strategy;
 const ExtractJWT = jwt.ExtractJwt;
 const LocalStrategy = local.Strategy;
@@ -13,38 +19,10 @@ export const initializePassport = () => {
     new LocalStrategy(
       {
         passReqToCallback: true,
-        usernameField: "email",
+        usernameField: "correo",
+        passwordField: "contraseña",
       },
-
-      async (req, username, password, done) => {
-        const findCart = async () => {
-          try {
-            const cart = await CartsModel.findById("67a35293b5559af297bc1c05");
-            return cart;
-          } catch (error) {
-            console.log(error.message);
-          }
-        };
-        const { first_name, last_name, email } = req.body;
-        try {
-          const user = await UserModel.findOne({ email: username });
-          if (user) {
-            console.log("Usuario ya existe");
-            return done(null, false);
-          }
-          const newUser = {
-            first_name,
-            last_name,
-            email,
-            password: createHash(password),
-            cart: await findCart(),
-          };
-          const result = await UserModel.create(newUser);
-          return done(null, result);
-        } catch (error) {
-          return done("Error al crear un usuario " + error.message);
-        }
-      }
+      passportRegister
     )
   );
   passport.use(
@@ -54,22 +32,7 @@ export const initializePassport = () => {
         passReqToCallback: true,
         usernameField: "email",
       },
-      async (req, username, password, done) => {
-        try {
-          const userExist = await UserModel.findOne({ email: username });
-
-          if (!userExist) return done(null, false);
-          const isValid = await isValidPassword(password, userExist.password);
-
-          if (!isValid) {
-            return done(null, false);
-          } else {
-            return done(null, userExist);
-          }
-        } catch (error) {
-          return done("Error al crear un usuario " + error.message);
-        }
-      }
+      passportLogin
     )
   );
   passport.use(
@@ -77,22 +40,16 @@ export const initializePassport = () => {
     new JWTStrategy(
       {
         jwtFromRequest: ExtractJWT.fromExtractors([cookieExtractor]),
-        secretOrKey: "clave-secreta",
+        secretOrKey: "clave-secreta" || env.token_key,
       },
-      async (jwt_payload, done) => {
-        try {
-          return done(null, jwt_payload);
-        } catch (error) {
-          return done(error);
-        }
-      }
+      passportCurrent
     )
   );
   passport.serializeUser((user, done) => {
     done(null, user._id);
   });
   passport.deserializeUser(async (id, done) => {
-    const user = await UserModel.findById(id);
+    const user = await userService.getUserById(id);
     done(null, user);
   });
 };
@@ -103,5 +60,6 @@ const cookieExtractor = (req) => {
       token = req.cookies["authCookie"];
     }
   }
+
   return token;
 };

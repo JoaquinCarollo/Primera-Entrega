@@ -1,25 +1,24 @@
 import express from "express";
 import cookieParser from "cookie-parser";
-import { engine } from "express-handlebars";
 import passport from "passport";
+import env from "./config/env.js";
 import { connectDb } from "./config/dataBase.js";
 import { initializePassport } from "./config/passport.js";
 import userRoutes from "./routes/userRoutes.js";
-import viewRoutes from "./routes/viewRoutes.js";
+import productsRoutes from "./routes/productsRoutes.js";
+import cartRoutes from "./routes/cartRoutes.js";
 
 const app = express();
-app.set("PORT", 3000);
-app.engine("handlebars", engine());
-app.set("view engine", "handlebars");
-app.set("views", "./src/views");
+app.set("PORT", env.port || 3000);
+
 const mongoUrl =
   "mongodb+srv://Cluster0:54321@cluster0.f1rcl.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 
-connectDb(mongoUrl);
-app.use(cookieParser());
+connectDb(env.mongodb_url || mongoUrl);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static("public"));
+app.use(cookieParser());
+
 initializePassport();
 app.use(passport.initialize());
 
@@ -28,7 +27,8 @@ app.get("/", (req, res) => {
 });
 
 app.use("/api/user", userRoutes);
-app.use("/", viewRoutes);
+app.use("/api/cart", cartRoutes);
+app.use("/api/products", productsRoutes);
 
 app.listen(app.get("PORT"), () => {
   console.log(`Server on port http://localhost:${app.get("PORT")}`);

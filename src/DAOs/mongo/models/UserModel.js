@@ -1,4 +1,4 @@
-import { Schema, model } from "mongoose";
+import { Schema, SchemaTypes, model } from "mongoose";
 
 const UserSchema = new Schema({
   first_name: {
@@ -18,7 +18,8 @@ const UserSchema = new Schema({
     type: String,
   },
   cart: {
-    type: {},
+    type: SchemaTypes.ObjectId,
+    ref: "Carts",
   },
   role: {
     type: String,
